@@ -1,11 +1,11 @@
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ListBuffer
 
 
 /**
@@ -18,11 +18,12 @@ object fileTransformations {
       .setMaster("local[*]")
 
     val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc)
     val hc = new HiveContext(sc)
 
     Logger.getRootLogger().setLevel(Level.ERROR)
 
-    val dir = "D:\\Users\\soumyaka\\Desktop\\Daimler"
+    val dir = "D:\\global-coding-env\\Daimler"
 
 
     val listOfDates = getListOfFolder(dir)
@@ -39,12 +40,12 @@ object fileTransformations {
           if(file.getName == "BALogFile.txt"){
             val BALogRDD = sc.textFile(file.getAbsolutePath)
             val header = BALogRDD.first()
-            val headerLength = header.split(";").size
-            val RDDLength = (BALogRDD.count() - 1).toInt
-            val currRow = new AtomicInteger(0)
+            /*val headerLength = header.split(";").size
+            val RDDLength = (BALogRDD.count() - 1).toInt*/
+            /*val currRow = new AtomicInteger(0)
             val currCol = new AtomicInteger(0)
 
-            val masterArray = ArrayBuffer.fill(headerLength, RDDLength)("")
+            val masterArray = ArrayBuffer.fill(headerLength, RDDLength)("")*/
 
             /* val rowData = BALogRDD.filter(_ != header)
                .map(_ + "a")
@@ -58,7 +59,7 @@ object fileTransformations {
 
                })*/*/
 
-            val structureSize = header.split(";;")(1).split(";").size
+            val structureSize = header.split(";;")(0).split(";").size
 
 
 
@@ -72,7 +73,7 @@ object fileTransformations {
                 val rowList = new ListBuffer[String]
                 var indexCount = 0
                 while(indexCount + structureSize - 1 < slicedArray.size){
-                  rowList += lineNumber + slicedArray.slice(indexCount, structureSize + indexCount).mkString(";")
+                  rowList += lineNumber + slicedArray.slice(indexCount, structureSize + indexCount).mkString(";") + ";"
 
 //                  hc.sql("insert into table values(" + rowList(0),  + ")");
 
@@ -81,11 +82,17 @@ object fileTransformations {
                 }
                 rowList
               })
-              .map(listB => {
-
+              .flatMap(li => li)
+              .map(line => {
+                val Array(lnNum, msgNum, dtTm, dsrID, msgTyp, msgTxt, usr, a) = (line + "a").split(";")
+                (lnNum, dsrID.toInt, msgNum.toInt, dtTm, msgTyp, msgTxt, usr)
               })
-            rowData.saveAsTextFile("D:\\Daimler\\src\\main\\resources\\testOutput\\" + date.getName + "\\" + folder.getName)
 
+            /*.map(listB => {
+
+            })*/
+            //            rowData.saveAsTextFile("D:\\global-coding-env\\IdeaProjects\\Daimler\\src\\main\\resources\\testOutput\\" + date.getName + "\\" + folder.getName)
+            rowData.foreach(println)
 
 
             /*val BALogRDDData = BALogRDD.filter(_ != header)
