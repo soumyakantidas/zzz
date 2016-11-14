@@ -1,19 +1,15 @@
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-
-
 /**
-  * Created by soumyaka on 11/10/2016.
+  * Created by soumyaka on 11/14/2016.
   */
-object fileTransformations {
+object useCase1Hive {
   def main(args: Array[String]): Unit = {
-    val conf =new SparkConf()
+    val conf = new SparkConf()
       .setAppName("IOT-test")
       .setMaster("local[*]")
 
@@ -27,40 +23,20 @@ object fileTransformations {
 
     val listOfDates = getListOfFolder(dir)
 
-    for (date <- listOfDates){
+    for (date <- listOfDates) {
       val listOfFolders = getListOfFolder(date.getAbsolutePath)
-//      val dateString = date.getName
+      //      val dateString = date.getName
 
-      for(folder <- listOfFolders){
-        val lineNumber = folder.getName.substring(4,8) // 8 is exclusive
+      for (folder <- listOfFolders) {
+        val lineNumber = folder.getName.substring(4, 8) // 8 is exclusive
 
         val listOfFiles = getListOfFiles(folder.getAbsolutePath)
         listOfFiles.foreach(file => {
-          if(file.getName == "BALogFile.txt"){
+          if (file.getName == "BALogFile.txt") {
             val BALogRDD = sc.textFile(file.getAbsolutePath)
             val header = BALogRDD.first()
-            val headerLength = header.split(";").size
-            val RDDLength = (BALogRDD.count() - 1).toInt
-            val currRow = new AtomicInteger(0)
-            val currCol = new AtomicInteger(0)
-
-            val masterArray = ArrayBuffer.fill(headerLength, RDDLength)("")
-
-            /* val rowData = BALogRDD.filter(_ != header)
-               .map(_ + "a")
-               .map(line => {
-                 val someArray = line.split(";")
-                 val slicedArray = someArray.slice(0, someArray.size - 1)
-                 slicedArray
-               }).collect()
-               /*.map(arr => {
-                 while
-
-               })*/*/
-
-            val structureSize = header.split(";;")(1).split(";").size
-
-
+            val structure = header.split(";;")(0).split(";")
+            val structureSize = structure.size
 
 
 
@@ -69,39 +45,32 @@ object fileTransformations {
               .map(line => {
                 val someArray = line.split(";")
                 val slicedArray = someArray.slice(0, someArray.size - 1)
-                val rowList = new ListBuffer[String]
+                //                val rowList = new ListBuffer[String]
+                var str = ""
                 var indexCount = 0
-                while(indexCount + structureSize - 1 < slicedArray.size){
-                  rowList += lineNumber + slicedArray.slice(indexCount, structureSize + indexCount).mkString(";")
+                while (indexCount + structureSize - 1 < slicedArray.size) {
+                  str += lineNumber + slicedArray.slice(indexCount, structureSize + indexCount).mkString(";") + ";" + "\n"
+                  //               df=  hc.sql("insert into table values(" + rowList(0),  + ")");
 
-//                  hc.sql("insert into table values(" + rowList(0),  + ")");
+                  //                  for(i <- structureSize ){
 
+                  /*val query = """INSERT INTO TABLE DW_PRODUCTION_DOSR_MALFUCTION """ +
+                    """("PROD_DOSER_LINE_NUMBER", "PROD_DOSER_ID", "PROD_DOSER_MALF_MESG_NUM", "PROD_DOSER_MALF_DT", """ +
+                  """ "PROD_DOSER_MALF_MESG_TYP", "PROD_DOSER_MALF_MESG_TXT", "PROD_DOSER_MALF_USR") """ +
+                  s""" VALUES $"""*/
 
+                  //                  }
                   indexCount += structureSize
                 }
-                rowList
+                str
               })
-              .map(listB => {
 
-              })
+            //              .filter(_ != "\n")
             rowData.saveAsTextFile("D:\\Daimler\\src\\main\\resources\\testOutput\\" + date.getName + "\\" + folder.getName)
-
-
-
-            /*val BALogRDDData = BALogRDD.filter(_ != header)
-            val splitData = BALogRDDData.map(line => {
-              val array = line.split(";")
-
-            })*/
-
           }
         })
       }
     }
-
-
-
-
   }
 
   def getListOfFolder(dir: String): List[File] = {
